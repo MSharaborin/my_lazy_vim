@@ -59,6 +59,4 @@ vim.opt.listchars = {
 vim.opt.fillchars = {
   eob = " ",       -- Убрать ~ в конце буфера
   fold = " ",
-  foldopen = "",
-  foldclose = "",
 }

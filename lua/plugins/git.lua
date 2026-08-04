@@ -269,4 +269,49 @@ return {
       return opts
     end,
   },
+
+  -- ── Ветки: быстрый выбор/просмотр через Telescope ──────────────────────────
+  {
+    "nvim-telescope/telescope.nvim",
+    keys = {
+      -- <leader>gB — все ветки с превью коммита, Enter = переключиться
+      {
+        "<leader>gB",
+        function()
+          require("telescope.builtin").git_branches({ show_remote_tracking_branches = true })
+        end,
+        desc = "🌿 Ветки: выбрать/переключить",
+      },
+      -- <leader>gV — выбрать ветку и открыть Diffview с ней
+      {
+        "<leader>gV",
+        function()
+          local actions = require("telescope.actions")
+          require("telescope.builtin").git_branches({
+            attach_mappings = function(prompt_bufnr, map)
+              map("i", "<CR>", function(prompt_bufnr)
+                local entry = actions.get_selected_entry(prompt_bufnr)
+                if not entry then
+                  return
+                end
+                local branch = entry.value
+                local ok, err = pcall(function()
+                  actions.close(prompt_bufnr)
+                  vim.defer_fn(function()
+                    vim.cmd("DiffviewOpen " .. vim.fn.fnameescape(branch))
+                    vim.notify("🔀 Diff с веткой: " .. branch, vim.log.levels.INFO)
+                  end, 50)
+                end)
+                if not ok then
+                  vim.notify("gV: " .. tostring(err), vim.log.levels.ERROR)
+                end
+              end)
+              return true
+            end,
+          })
+        end,
+        desc = "🔀 Сравнить с выбранной веткой (Diffview)",
+      },
+    },
+  },
 }
