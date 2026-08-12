@@ -4,6 +4,22 @@
 --   MongoDB:    mongodb://user:password@host:27017/database
 --   SQLite:     sqlite:path/to/file.db
 
+-- Обновлять список подключений из connections.json при каждом открытии панели.
+-- vim-dadbod-ui кэширует список на сессию, иначе новое подключение видно только после рестарта.
+local function go_dbui_toggle()
+  local open = false
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    if vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "dbui" then
+      open = true
+      break
+    end
+  end
+  if not open then
+    pcall(vim.fn["db_ui#reset_state"])
+  end
+  vim.cmd("DBUIToggle")
+end
+
 return {
   {
     "tpope/vim-dadbod",
@@ -22,7 +38,7 @@ return {
     },
     cmd = { "DBUI", "DBUIToggle", "DBUIAddConnection", "DBUIFindBuffer" },
     keys = {
-      { "<leader>Db", "<cmd>DBUIToggle<cr>", desc = "🗄️  База данных (панель)" },
+      { "<leader>Db", go_dbui_toggle, desc = "🗄️  База данных (панель)" },
       { "<leader>Da", "<cmd>DBUIAddConnection<cr>", desc = "➕ Добавить подключение" },
       { "<leader>Df", "<cmd>DBUIFindBuffer<cr>", desc = "🔍 Найти буфер БД" },
       { "<leader>Dr", "<cmd>DBUIRenameBuffer<cr>", desc = "✏️  Переименовать буфер" },

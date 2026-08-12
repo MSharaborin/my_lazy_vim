@@ -29,8 +29,9 @@ return {
     },
     ft = { "go", "gomod", "gowork", "gotmpl" },
     build = ':lua require("go.install").update_all_sync()',
+    cmd = { "GoInit" },
     keys = {
-      { "<leader>Gr", "<cmd>GoRun<cr>", ft = "go", desc = "🐹 Запустить (Go)" },
+      { "<leader>Gr", "<cmd>GoRun %<cr>", ft = "go", desc = "🐹 Запустить (Go)" },
       { "<leader>Gt", "<cmd>GoTest<cr>", ft = "go", desc = "🐹 Тесты (Go)" },
       { "<leader>Gf", "<cmd>GoFmt<cr>", ft = "go", desc = "🐹 Форматировать (Go)" },
       { "<leader>Gi", "<cmd>GoImport<cr>", ft = "go", desc = "🐹 Импорты (Go)" },
@@ -48,6 +49,43 @@ return {
         lsp_on_attach = false,
         dap_debug = true,
       })
+
+      vim.api.nvim_create_user_command("GoInit", function(opts)
+        local name = opts.fargs[1] or vim.fn.input("Название проекта: ")
+        name = vim.trim(name or "")
+        if name == "" then
+          return vim.notify("Имя проекта не указано", vim.log.levels.ERROR)
+        end
+
+        if vim.fn.exepath("go") == "" then
+          return vim.notify("go не найден — установите Go", vim.log.levels.ERROR)
+        end
+
+        local dir = vim.fn.getcwd() .. "/" .. name
+        if vim.fn.isdirectory(dir) == 1 then
+          return vim.notify("Директория уже существует: " .. dir, vim.log.levels.WARN)
+        end
+
+        vim.fn.mkdir(dir, "p")
+        local res = vim.system({ "go", "mod", "init", name }, { cwd = dir, text = true }):wait()
+        if res.code ~= 0 then
+          return vim.notify("go mod init: " .. res.stderr, vim.log.levels.ERROR)
+        end
+
+        vim.fn.writefile(vim.split([[
+package main
+
+import "fmt"
+
+func main() {
+	fmt.Println("Hello from __NAME__")
+}
+]], "\n"), dir .. "/main.go")
+
+        vim.cmd("cd " .. vim.fn.fnameescape(dir))
+        vim.cmd("edit main.go")
+        vim.notify("✅ Go-проект создан: " .. dir, vim.log.levels.INFO)
+      end, { nargs = "?", desc = "Создать Go-проект: папка + go.mod + main.go" })
     end,
   },
 
