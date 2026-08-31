@@ -67,6 +67,18 @@ map("v", "<S-Up>", ":m '<-2<cr>gv=gv", { desc = "Переместить стро
 -- ── Быстрый выход из insert режима ───────────────────────────────────────────
 map("i", "jk", "<Esc>", { desc = "Выйти из режима вставки" })
 
+-- ── Внешний терминал (новое окно iTerm в директории проекта) ─────────────────
+map("n", "<leader>tT", function()
+  local cwd = vim.fn.getcwd()
+  local iterm = vim.fn.expand("~/Applications/iTerm.app")
+  if vim.fn.isdirectory(iterm) == 1 then
+    vim.system({ "open", "-b", "com.googlecode.iterm2", cwd }):wait()
+  else
+    vim.system({ "open", "-a", "Terminal", cwd }):wait()
+  end
+  vim.notify("🖥️  Внешний терминал: " .. cwd, vim.log.levels.INFO)
+end, { desc = "Новое окно терминала в директории проекта" })
+
 -- ── Поиск ─────────────────────────────────────────────────────────────────────
 map("n", "<Esc>", "<cmd>nohlsearch<cr>", { desc = "Убрать подсветку поиска" })
 

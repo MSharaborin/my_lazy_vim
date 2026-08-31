@@ -12,6 +12,26 @@ local function notify(msg, level)
   vim.notify(msg, level or vim.log.levels.INFO, { title = "Markdown" })
 end
 
+-- ── MD-линтер (markdownlint): вкл/выкл все ошибки ────────────────────────────
+M.md_lint_on = true
+
+local function toggle_md_lint()
+  M.md_lint_on = not M.md_lint_on
+  local ok, lint = pcall(require, "lint")
+  if ok then
+    if M.md_lint_on then
+      -- Включили: перезапустить линтер (condition уже true)
+      lint.try_lint()
+    else
+      -- Выключили: очистить уже показанные ошибки.
+      -- НЕ вызываем try_lint() — он запустил бы линтер в обход condition.
+      vim.diagnostic.reset(nil, { namespace = lint.get_namespace("markdownlint-cli2") })
+    end
+  end
+  notify(M.md_lint_on and "MD-линтер включён" or "MD-линтер отключён (все ошибки скрыты)",
+    M.md_lint_on and vim.log.levels.INFO or vim.log.levels.WARN)
+end
+
 -- ── Окно «режима просмотра» ─────────────────────────────────────────────────
 M.saved_win = {} -- bufnr -> сохранённые настройки окна
 
@@ -99,6 +119,7 @@ return {
         ft = "markdown",
         desc = "📖 Просмотр ⇄ редактирование",
       },
+      { "<leader>mD", toggle_md_lint, desc = "🚫 Показать / скрыть все MD-ошибки" },
     },
   },
 
@@ -108,5 +129,22 @@ return {
     keys = {
       { "<leader>mp", "<cmd>MarkdownPreviewToggle<cr>", ft = "markdown", desc = "🌐 Превью в браузере" },
     },
+  },
+
+  -- Линтер markdown: отключаем MD031/MD029 (см. ~/.markdownlint-cli2.yaml)
+  -- и даём хоткей <leader>mD для полного вкл/выкл всех MD-ошибок
+  {
+    "mfussenegger/nvim-lint",
+    optional = true,
+    opts = function(_, opts)
+      opts.linters = opts.linters or {}
+      opts.linters["markdownlint-cli2"] = {
+        args = { "-", "--config", vim.fn.expand("~/.markdownlint-cli2.yaml") },
+        condition = function()
+          return M.md_lint_on
+        end,
+      }
+      return opts
+    end,
   },
 }

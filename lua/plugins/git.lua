@@ -129,6 +129,10 @@ return {
             { "v", "<leader>ct", actions.diffget("theirs"), { desc = "✅ Взять выделение из THEIRS" } },
             { "n", "<leader>c1", actions.diffget("ours"), { desc = "✅ Взять hunk из OURS" } },
             { "n", "<leader>c2", actions.diffget("theirs"), { desc = "✅ Взять hunk из THEIRS" } },
+
+            -- Переключение между основным экраном и git-панелью файлов
+            { "n", "<leader>ge", actions.focus_files, { desc = "📂 В git-панель файлов" } },
+            { "n", "<leader>gE", actions.toggle_files, { desc = "📂 Показать/скрыть панель файлов" } },
           },
           file_panel = {
             { "n", "q", actions.close, { desc = "Закрыть" } },
@@ -136,6 +140,9 @@ return {
             { "n", "<s-tab>", actions.select_prev_entry, { desc = "Предыдущий файл" } },
             { "n", "<leader>cO", actions.conflict_choose_all("ours"), { desc = "Весь файл: OURS" } },
             { "n", "<leader>cT", actions.conflict_choose_all("theirs"), { desc = "Весь файл: THEIRS" } },
+            -- Вернуться из git-панели к диффу / переключить панель
+            { "n", "<leader>ge", actions.focus_files, { desc = "📂 В git-панель файлов" } },
+            { "n", "<leader>gE", actions.toggle_files, { desc = "📂 Показать/скрыть панель файлов" } },
           },
         },
       })
