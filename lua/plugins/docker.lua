@@ -281,6 +281,110 @@ return {
           close_on_exit = false,
         }):toggle()
       end, { desc = "🐳 docker ps" })
+
+      -- ── Docker compose: управление из файла docker-compose.yml ─────────────
+      -- При открытии docker-compose.yml работают (буферные, перекрывают глобальные):
+      --   <leader>ku — запустить сервис под курсором или выбрать из списка
+      --   <leader>kb — запустить ВСЕ сервисы с пересборкой (up --build)
+      --   <leader>kd — остановить (down)
+
+      local function compose_services()
+        local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+        local services, in_services = {}, false
+        for _, line in ipairs(lines) do
+          local indent, body = line:match("^(%s*)(.-)%s*$")
+          if body:match("^services:%s*[#]?.*$") then
+            in_services = true
+          elseif in_services then
+            if body == "" or indent == "" then
+              in_services = false
+            else
+              local svc = body:match("^([%w._%-]+):%s*$")
+              if svc then
+                table.insert(services, svc)
+              end
+            end
+          end
+        end
+        return services
+      end
+
+      local function service_under_cursor()
+        local line = vim.fn.getline(".")
+        return line:match("^%s*([%w._%-]+):%s*$")
+      end
+
+      local function compose_term(cmd_suffix)
+        local compose_file = vim.fn.expand("%:p")
+        local cmd = "docker compose -f " .. vim.fn.shellescape(compose_file) .. " " .. cmd_suffix
+        Terminal:new({
+          cmd = cmd,
+          direction = "horizontal",
+          close_on_exit = false,
+        }):toggle()
+      end
+
+      local function compose_up()
+        local svc = service_under_cursor()
+        if svc then
+          compose_term("up " .. svc)
+          return
+        end
+        local services = compose_services()
+        table.insert(services, 1, "@все сервисы (up)")
+        vim.ui.select(services, {
+          prompt = "Docker compose:",
+          format_item = function(item)
+            return "🐳 " .. item
+          end,
+        }, function(choice)
+          if not choice then
+            return
+          end
+          if choice == "@все сервисы (up)" then
+            compose_term("up")
+          else
+            compose_term("up " .. choice)
+          end
+        end)
+      end
+
+      vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
+        group = vim.api.nvim_create_augroup("ComposeKeys", { clear = true }),
+        pattern = {
+          "docker-compose.yml",
+          "docker-compose.yaml",
+          "docker-compose*.yml",
+          "docker-compose*.yaml",
+          "compose.yml",
+          "compose.yaml",
+        },
+        callback = function(event)
+          local opts = { buffer = event.buf, silent = true }
+          vim.keymap.set(
+            "n",
+            "<leader>ku",
+            compose_up,
+            vim.tbl_extend("force", opts, { desc = "🐳 Compose: up сервис под курсором / выбрать" })
+          )
+          vim.keymap.set(
+            "n",
+            "<leader>kb",
+            function()
+              compose_term("up --build")
+            end,
+            vim.tbl_extend("force", opts, { desc = "🐳 Compose: up --build (все сервисы)" })
+          )
+          vim.keymap.set(
+            "n",
+            "<leader>kd",
+            function()
+              compose_term("down")
+            end,
+            vim.tbl_extend("force", opts, { desc = "🐳 Compose: down" })
+          )
+        end,
+      })
     end,
   },
 }

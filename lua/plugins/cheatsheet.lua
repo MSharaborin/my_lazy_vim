@@ -103,7 +103,7 @@ _G.EvroCheatsheet = open_cheatsheet
 return {
   {
     "folke/which-key.nvim",
-    event = "VeryLazy",
+    lazy = false, -- грузить сразу: иначе при сбое VeryLazy Space ведёт себя как «движение вправо»
     opts = function(_, opts)
       opts.spec = opts.spec or {}
       vim.list_extend(opts.spec, {
