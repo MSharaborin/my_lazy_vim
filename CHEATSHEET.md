@@ -103,7 +103,8 @@
 
 | Клавиши | Действие |
 |---------|----------|
-| `Space e` | открыть / закрыть проводник |
+| `Ctrl-n` | открыть / закрыть проводник (быстрый тогл) |
+| `Space e` | Snacks Explorer (плавающий поиск по файлам) |
 | `Space ef` | вкладка **Файлы** |
 | `Space eb` | вкладка **Буферы** |
 | `Space eg` | вкладка **Git** |
@@ -131,45 +132,79 @@
 
 | Клавиши | Действие |
 |---------|----------|
-| `Space gg` | Neogit (панель Git) |
-| `Space gd` | Diffview (side-by-side) |
-| `Space gm` | Merge UI как в PyCharm |
+| `Space gl` | **история коммитов** (превью = diff коммита) |
+| `Space gB` | **ветки**: Enter = переключить |
+| `Space gs` | **git status**: Tab = stage/unstage файла |
+| `Space gc` | commit (буфер, `Ctrl-s` = commit) |
+| `Space gd` | Diff: изменённые файлы side-by-side |
+| `Space gD` | закрыть Diff |
 | `Space gh` | история текущего файла |
-| `Space gH` | история репозитория |
-| `Space gc` | commit |
-| `Space gP` | push |
-| `Space gF` | pull |
-| `Space gs` | stage hunk (**visual = только выделение**) |
-| `Space gr` | reset hunk (**visual = только выделение**) |
-| `Space gp` | предпросмотр hunk |
-| `Space gb` | blame строки |
-| `]h` / `[h` | след. / пред. hunk |
+| `Space gM` | rebase/merge: **continue** |
+| `Space gm` | rebase/merge: **abort** |
+| `]h` / `[h` | след. / пред. hunk в файле |
+| `Space ghs` | stage hunk (**visual = только выделение**) |
+| `Space ghr` | reset hunk (**visual = только выделение**) |
+| `Space ghS` | stage весь файл |
 
-### Merge-конфликты (как в PyCharm)
+### В пикере истории коммитов (`Space gl`)
 
-При конфликте появится уведомление.
+| Клавиши | Действие |
+|---------|----------|
+| `Ctrl-r` | **revert** коммита (с подтверждением) |
+| `Ctrl-p` | **cherry-pick** коммита (с подтверждением) |
+| `Ctrl-d` | **drop** коммита → откроется rebase todo |
 
-1. **Открыть 3-way UI:** `Space mcr` или `Space gm`  
-   Слева **OURS** (твоё) | Справа **THEIRS** (чужое) | **RESULT** (итог)
+### В пикере веток (`Space gB`)
 
-2. **Принять блок целиком** (курсор внутри конфликта):
+| Клавиши | Действие |
+|---------|----------|
+| `Enter` | checkout ветки |
+| `Ctrl-n` | **создать ветку из выбранной** (вводишь имя → `git checkout -b имя исходная`) |
+| `Ctrl-a` / `Ctrl-x` | создать / удалить ветку от HEAD (стандарт snacks) |
 
-| Клавиши | Как в PyCharm |
-|---------|----------------|
-| `Space mco` | Accept Yours (своё) |
-| `Space mct` | Accept Theirs (чужое) |
-| `Space mcb` | Accept Both |
-| `Space mc0` | ничего / удалить |
+### В пикере статуса (`Space gs`)
+
+| Клавиши | Действие |
+|---------|----------|
+| `Tab` | stage / unstage файла |
+| `Ctrl-r` | restore (откатить изменения файла) |
+| `Enter` | открыть превью diff |
+
+### Drop через rebase todo (после `Ctrl-d` в `Space gl`)
+
+Откроется todo-список rebase. На строке нужного коммита:
+`Ctrl-a` циклит pick → edit → fixup → squash → reword → **drop**.
+Выйти и применить: `:wq`. Отменить rebase: `Space gm` (abort).
+
+### Diff / Merge / Rebase — хоткеями (как в PyCharm)
+
+Открой `Space gd` (или Diffview откроется сам при merge/rebase-конфликте).
+Слева — твоя версия, справа — новая. Курсор в изменённые строки:
+
+| Клавиши | Действие |
+|---------|----------|
+| `do` | **взять** изменение из другого окна (diff obtain) |
+| `dp` | **отдать** изменение в другое окно (diff put) |
+| `]c` / `[c` | след. / пред. изменение (hunk) |
+| `s` | stage файла (в панели файлов Diffview) |
+| `Space` в панели | toggle stage |
+| `q` | закрыть Diffview |
+
+**Merge-конфликты** (3 окна: OURS | THEIRS | результат, курсор внутри конфликта):
+
+| Клавиши | Действие |
+|---------|----------|
 | `]x` / `[x` | след. / пред. конфликт |
-| `Space mcl` | список всех конфликтов |
+| `Space co` | принять **СВОЁ** (ours) |
+| `Space ct` | принять **ЧУЖОЕ** (theirs) |
+| `Space cb` | принять BASE |
+| `Space ca` | принять **ОБА** (all) |
+| `Space cO` | весь файл: СВОЁ |
+| `Space cT` | весь файл: ЧУЖОЕ |
+| `Space cA` | весь файл: ОБА |
+| `dx` | удалить блок конфликта (взять ничего) |
 
-3. **Взять только кусок кода:**
-   - в Diffview выдели строки в RESULT (`v`)
-   - `Space co` — взять выделение из OURS  
-   - `Space ct` — взять выделение из THEIRS  
-   - или правь RESULT руками
-
-4. Сохрани (`Ctrl-s`) → `Space gg` → stage → commit
+После решения конфликтов: сохрани (`Ctrl-s`), `Space gd` → `s` (stage файлов) → `Space gM` (continue).
 
 ---
 
@@ -193,7 +228,8 @@
 
 | Клавиши | Действие |
 |---------|----------|
-| `Ctrl-\` | плавающий терминал |
+| `Ctrl-\` | терминал в **новой вкладке** |
+| `Space Tt` | терминал в новой вкладке |
 | `Space Tf` | плавающий |
 | `Space Th` | снизу |
 | `Space Tv` | сбоку |

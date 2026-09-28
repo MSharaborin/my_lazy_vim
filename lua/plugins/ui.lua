@@ -94,6 +94,13 @@ return {
     },
     keys = {
       {
+        "<C-n>",
+        function()
+          require("neo-tree.command").execute({ toggle = true, source = "filesystem", reveal = true })
+        end,
+        desc = "📁 Neo-tree: Файлы",
+      },
+      {
         "<leader>ef",
         function()
           require("neo-tree.command").execute({ toggle = true, source = "filesystem", reveal = true })
@@ -383,12 +390,10 @@ return {
             information = { "undercurl" },
           },
         },
-        neogit = true,
         noice = true,
         notify = true,
         nvim_surround = true,
         outline = true,
-        telescope = { enabled = true },
         treesitter = true,
         which_key = true,
       },

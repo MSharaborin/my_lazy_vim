@@ -1,7 +1,7 @@
 -- ── Docker + терминал ────────────────────────────────────────────────────────
 -- Префикс <leader>k — контейнеры (не пересекается с отладкой <leader>d)
 -- Префикс <leader>T — терминал
--- <C-\> — быстрый плавающий терминал
+-- <C-\> — быстрый терминал в новой вкладке
 
 return {
   {
@@ -9,7 +9,8 @@ return {
     version = "*",
     event = "VeryLazy",
     keys = {
-      { "<C-\\>", "<cmd>ToggleTerm direction=float<cr>", desc = "📟 Плавающий терминал", mode = { "n", "t", "i" } },
+      { "<C-\\>", "<cmd>ToggleTerm direction=tab<cr>", desc = "📟 Терминал в новой вкладке", mode = { "n", "t", "i" } },
+      { "<leader>Tt", "<cmd>ToggleTerm direction=tab<cr>", desc = "📟 Терминал (вкладка)" },
       { "<leader>Tf", "<cmd>ToggleTerm direction=float<cr>", desc = "📟 Терминал (плавающий)" },
       { "<leader>Th", "<cmd>ToggleTerm direction=horizontal<cr>", desc = "📟 Терминал (снизу)" },
       { "<leader>Tv", "<cmd>ToggleTerm direction=vertical<cr>", desc = "📟 Терминал (сбоку)" },
