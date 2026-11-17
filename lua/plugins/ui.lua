@@ -1,127 +1,155 @@
 -- ── UI улучшения ──────────────────────────────────────────────────────────────
 -- Структура кода, навигация, zen mode, цвета, отступы
 
+-- Панель коммита в стиле PyCharm: список изменённых файлов, отметка через Tab,
+-- поле сообщения снизу и кнопки Commit (<C-c>) / Push (<C-p>).
+-- Сделано на snacks-пикере git_status: у него уже есть поле ввода снизу и
+-- экшен git_stage. Neogit в текущей версииcommit открывает popup, а не поле
+-- с кнопками, поэтому для этого UX взят snacks.
+local function git_run(cmd, on_ok)
+  local res = vim.system(cmd, { text = true }):wait()
+  if res.code == 0 then
+    if on_ok then
+      on_ok()
+    end
+  else
+    local msg = (res.stderr or ""):gsub("^fatal:%s*", "")
+    if msg == "" then
+      msg = (res.stdout or ""):gsub("^fatal:%s*", "")
+    end
+    vim.notify("❌ " .. msg, vim.log.levels.ERROR, { title = "Git" })
+  end
+end
+
+-- snacks передаёт в экшен разные вещи: сам picker, элемент списка или объект
+-- окна (для неназначенных клавиш — p.input.win). Поэтому аргументу не доверяем
+-- и берём активный picker из списка. Признак picker'а — поля input и list.
+local function active_picker(candidate)
+  if candidate and candidate.input and candidate.list then
+    return candidate
+  end
+  local list = Snacks.picker.get({ tab = false })
+  return list and list[#list] or nil
+end
+
 return {
-  -- ── Файловый менеджер (расширяем neo-tree из LazyVim) ─────────────────────
+  -- ── Snacks: пикеры (Explorer, буферы, панель коммита) + видимость файлов ────
+  -- Дефолты snacks: sources.files = { hidden = false, ignored = false }.
+  -- Это значит, что fd ищет без --hidden и без --no-ignore, поэтому файлы вроде
+  -- .env (точка + .gitignore) не находятся вообще — их нет даже в результатах.
+  -- hidden = true → --hidden, ignored = true → --no-ignore.
   {
-    "nvim-neo-tree/neo-tree.nvim",
-    opts = {
-      close_if_last_window = true,
-      popup_border_style = "rounded",
-      enable_git_status = true,
-      enable_diagnostics = true,
-      sources = { "filesystem", "buffers", "git_status" },
-      source_selector = {
-        winbar = true,
-        content_layout = "center",
-        sources = {
-          { source = "filesystem",  display_name = "  Файлы" },
-          { source = "buffers",     display_name = "  Буферы" },
-          { source = "git_status",  display_name = "  Git" },
-        },
-      },
-      default_component_configs = {
-        indent = {
-          indent_size = 2,
-          padding = 1,
-          with_markers = true,
-          indent_marker = "│",
-          last_indent_marker = "└",
-        },
-        icon = {
-          folder_closed = "",
-          folder_open = "",
-          folder_empty = "󰜌",
-        },
-        modified = { symbol = "●" },
-        git_status = {
-          symbols = {
-            added     = "✚",
-            modified  = "",
-            deleted   = "✖",
-            renamed   = "󰁕",
-            untracked = "",
-            ignored   = "",
-            unstaged  = "󰄱",
-            staged    = "",
-            conflict  = "",
-          },
-        },
-      },
-      filesystem = {
-        filtered_items = {
-          hide_dotfiles = false,      -- Показывать скрытые файлы
-          hide_gitignored = false,    -- Показывать .gitignored файлы
-          hide_hidden = false,
-          never_show = { ".DS_Store", "thumbs.db" },
-        },
-        follow_current_file = {
-          enabled = true,
-          leave_dirs_open = true,
-        },
-        group_empty_dirs = false,
-        use_libuv_file_watcher = true, -- Авто-обновление при изменении FS
-      },
-      window = {
-        position = "left",
-        width = 35,
-        mappings = {
-          ["<space>"] = "none",
-          -- Переключение вкладок: Файлы / Буферы / Git
-          ["<"] = "prev_source",
-          [">"] = "next_source",
-          ["1"] = function()
-            require("neo-tree.command").execute({ source = "filesystem", reveal = true })
-          end,
-          ["2"] = function()
-            require("neo-tree.command").execute({ source = "buffers" })
-          end,
-          ["3"] = function()
-            require("neo-tree.command").execute({ source = "git_status" })
-          end,
-          -- Скопировать путь к файлу
-          ["Y"] = {
-            function(state)
-              local node = state.tree:get_node()
-              local path = node:get_id()
-              vim.fn.setreg("+", path, "c")
-              vim.notify("📋 Скопировано: " .. path, vim.log.levels.INFO)
-            end,
-            desc = "Скопировать путь",
-          },
-        },
-      },
-    },
+    "folke/snacks.nvim",
     keys = {
-      {
-        "<C-n>",
-        function()
-          require("neo-tree.command").execute({ toggle = true, source = "filesystem", reveal = true })
-        end,
-        desc = "📁 Neo-tree: Файлы",
-      },
-      {
-        "<leader>ef",
-        function()
-          require("neo-tree.command").execute({ toggle = true, source = "filesystem", reveal = true })
-        end,
-        desc = "📁 Neo-tree: Файлы",
-      },
       {
         "<leader>eb",
         function()
-          require("neo-tree.command").execute({ toggle = true, source = "buffers" })
+          Snacks.picker.buffers()
         end,
-        desc = "📄 Neo-tree: Буферы",
+        desc = "📄 Буферы",
       },
       {
         "<leader>eg",
         function()
-          require("neo-tree.command").execute({ toggle = true, source = "git_status" })
+          Snacks.picker.git_status()
         end,
-        desc = "🌿 Neo-tree: Git",
+        desc = "🌿 Git: файлы к коммиту (Commit / Push)",
       },
     },
+    opts = function(_, opts)
+      opts.picker = opts.picker or {}
+      opts.picker.sources = opts.picker.sources or {}
+
+      for _, name in ipairs({ "explorer", "files" }) do
+        local src = opts.picker.sources[name] or {}
+        src.hidden = true -- показывать .env, .gitignore, .config, .venv
+        src.ignored = true -- показывать файлы из .gitignore
+        src.exclude = { ".git" } -- служебное содержимое .git не показываем
+        opts.picker.sources[name] = src
+      end
+
+      -- Панель коммита: кнопки к полю ввода и к списку файлов
+      local git_status = opts.picker.sources.git_status or {}
+      local win = git_status.win or {}
+
+      local function commit_key()
+        return {
+          function(p)
+            local picker = active_picker(p)
+            if not picker then
+              return
+            end
+            local msg = picker.input:get()
+            if not msg or msg:match("^%s*$") then
+              vim.notify("Введите сообщение коммита", vim.log.levels.WARN, { title = "Git" })
+              return
+            end
+            git_run({ "git", "commit", "-m", msg }, function()
+              picker:close()
+              vim.notify("✅ " .. msg, vim.log.levels.INFO, { title = "Git" })
+            end)
+          end,
+          mode = { "n", "i" },
+        }
+      end
+
+      local function push_key()
+        return {
+          function(p)
+            local picker = active_picker(p)
+            git_run({ "git", "push" }, function()
+              vim.notify("✅ Запушено", vim.log.levels.INFO, { title = "Git" })
+              if picker then
+                picker:refresh()
+              end
+            end)
+          end,
+          mode = { "n", "i" },
+          nowait = true,
+        }
+      end
+
+      local function stage_all_key()
+        return {
+          function(p)
+            local picker = active_picker(p)
+            git_run({ "git", "add", "-A" }, function()
+              vim.notify("✅ Все файлы отмечены", vim.log.levels.INFO, { title = "Git" })
+              if picker then
+                picker:refresh()
+              end
+            end)
+          end,
+          mode = { "n", "i" },
+          nowait = true,
+        }
+      end
+
+      -- Клавиши вешаем и в поле ввода, и в список: фокус может быть на любом,
+      -- а коммит должен работать сразу после отметки файлов в списке.
+      -- Дефолты snacks (Tab = git_stage, C-r = git_restore) задаём сами: на момент
+      -- вызова этой функции дефолты ещё не смержены, иначе они бы пропали.
+      local base = {
+        ["<Tab>"] = { "git_stage", mode = { "n", "i" } }, -- отметить / снять отметку
+        ["<c-r>"] = { "git_restore", mode = { "n", "i" }, nowait = true }, -- откатить файл
+        ["<c-c>"] = commit_key(),
+        ["<c-p>"] = push_key(),
+        ["<c-a>"] = stage_all_key(),
+      }
+
+      local input = vim.deepcopy(win.input or {})
+      local list = vim.deepcopy(win.list or {})
+      input.keys = vim.tbl_extend("force", input.keys or {}, base)
+      input.prompt = "Commit message: "
+      list.keys = vim.tbl_extend("force", list.keys or {}, base)
+      win.input = input
+      win.list = list
+      git_status.win = win
+      git_status.confirm = "git_stage" -- Enter тоже отмечает файл
+      opts.picker.sources.git_status = git_status
+
+      return opts
+    end,
   },
 
   -- ── Outline — структура кода (классы, функции, переменные) ───────────────
@@ -241,7 +269,7 @@ return {
       },
       exclude = {
         filetypes = {
-          "help", "alpha", "dashboard", "neo-tree",
+          "help", "alpha", "dashboard",
           "Trouble", "trouble", "lazy", "mason",
           "notify", "toggleterm", "lazyterm",
         },

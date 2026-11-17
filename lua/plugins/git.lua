@@ -1,4 +1,4 @@
--- ── Git: Neogit + Diffview + Conflicts (как в PyCharm) + Gitsigns ────────────
+--der>go ── Git: Neogit + Diffview + Conflicts (как в PyCharm) + Gitsigns ────────────
 -- Merge UI:
 --   <leader>gm  — трёхсторонний merge (OURS | RESULT | THEIRS) как в PyCharm
 --   <leader>mco / mct / mcb / mc0 — принять свою / чужую / обе / ничью
@@ -115,7 +115,12 @@ return {
 
             -- Принять блок целиком (курсор внутри конфликта)
             { "n", "<leader>co", actions.conflict_choose("ours"), { desc = "✅ Принять СВОЁ (OURS)" } },
-            { "n", "<leader>ct", actions.conflict_choose("theirs"), { desc = "✅ Принять ЧУЖОЕ (THEIRS)" } },
+            {
+              "n",
+              "<leader>ct",
+              actions.conflict_choose("theirs"),
+              { desc = "✅ Принять ЧУЖОЕ (THEIRS)" },
+            },
             { "n", "<leader>cb", actions.conflict_choose("base"), { desc = "✅ Принять BASE" } },
             { "n", "<leader>cB", actions.conflict_choose("all"), { desc = "✅ Принять ОБА" } },
             { "n", "dx", actions.conflict_choose("none"), { desc = "🗑 Удалить конфликт" } },
@@ -126,13 +131,23 @@ return {
 
             -- Частично: visual → взять выделенные строки из OURS/THEIRS
             { "v", "<leader>co", actions.diffget("ours"), { desc = "✅ Взять выделение из OURS" } },
-            { "v", "<leader>ct", actions.diffget("theirs"), { desc = "✅ Взять выделение из THEIRS" } },
+            {
+              "v",
+              "<leader>ct",
+              actions.diffget("theirs"),
+              { desc = "✅ Взять выделение из THEIRS" },
+            },
             { "n", "<leader>c1", actions.diffget("ours"), { desc = "✅ Взять hunk из OURS" } },
             { "n", "<leader>c2", actions.diffget("theirs"), { desc = "✅ Взять hunk из THEIRS" } },
 
             -- Переключение между основным экраном и git-панелью файлов
             { "n", "<leader>ge", actions.focus_files, { desc = "📂 В git-панель файлов" } },
-            { "n", "<leader>gE", actions.toggle_files, { desc = "📂 Показать/скрыть панель файлов" } },
+            {
+              "n",
+              "<leader>gE",
+              actions.toggle_files,
+              { desc = "📂 Показать/скрыть панель файлов" },
+            },
           },
           file_panel = {
             { "n", "q", actions.close, { desc = "Закрыть" } },
@@ -142,7 +157,12 @@ return {
             { "n", "<leader>cT", actions.conflict_choose_all("theirs"), { desc = "Весь файл: THEIRS" } },
             -- Вернуться из git-панели к диффу / переключить панель
             { "n", "<leader>ge", actions.focus_files, { desc = "📂 В git-панель файлов" } },
-            { "n", "<leader>gE", actions.toggle_files, { desc = "📂 Показать/скрыть панель файлов" } },
+            {
+              "n",
+              "<leader>gE",
+              actions.toggle_files,
+              { desc = "📂 Показать/скрыть панель файлов" },
+            },
           },
         },
       })
@@ -176,7 +196,10 @@ return {
         "<leader>mcr",
         function()
           vim.cmd("DiffviewOpen")
-          vim.notify("🔀 Merge UI открыт. Visual + <leader>co/<leader>ct = взять кусок", vim.log.levels.INFO)
+          vim.notify(
+            "🔀 Merge UI открыт. Visual + <leader>co/<leader>ct = взять кусок",
+            vim.log.levels.INFO
+          )
         end,
         desc = "🔀 Открыть Merge UI (PyCharm-style)",
       },
@@ -268,6 +291,9 @@ return {
         map("n", "<leader>gb", function()
           gs.blame_line({ full = true })
         end, "👤 Git blame")
+        -- Полноэкранный annotate, как в PyCharm: автор/дата по каждой строке.
+        -- Не gbl: gb уже занят, и наличие gbl заставило бы gb ждать таймаут.
+        map("n", "<leader>gA", gs.blame, "👤 Annotate весь файл (окно blame)")
         map("n", "<leader>gtb", gs.toggle_current_line_blame, "🔄 Blame inline")
         map("n", "<leader>gtd", gs.toggle_deleted, "🗑  Показать удалённые")
         map({ "o", "x" }, "ih", ":<C-U>Gitsigns select_hunk<CR>", "Выбрать hunk")
@@ -319,6 +345,52 @@ return {
         end,
         desc = "🔀 Сравнить с выбранной веткой (Diffview)",
       },
+    },
+  },
+
+  -- ── Граф коммитов (как Git Log с картинкой в PyCharm) ──────────────────────
+  {
+    "isakbm/gitgraph.nvim",
+    keys = {
+      {
+        "<leader>go",
+        function()
+          require("gitgraph").draw({}, { all = true, max_count = 100 })
+          -- q закрывает граф (в самом плагине этой клавиши нет)
+          vim.keymap.set("n", "q", "<cmd>q<cr>", { buffer = 0, nowait = true, desc = "Закрыть граф" })
+        end,
+        desc = "🌳 Граф коммитов (все ветки)",
+      },
+    },
+    opts = {
+      hooks = {
+        -- Enter по коммиту → Diffview с его diff'ом (как в PyCharm)
+        on_select_commit = function(commit)
+          vim.notify("DiffviewOpen " .. commit.hash)
+          vim.cmd("DiffviewOpen " .. commit.hash)
+        end,
+      },
+    },
+  },
+
+  -- ── Octo: GitHub PR и Issues в редакторе ───────────────────────────────────
+  -- Требует gh CLI: brew install gh && gh auth login.
+  -- Клавиша gO не конфликтует с существующими gi/gI/gp/gP/gS.
+  {
+    "pwntester/octo.nvim",
+    cmd = "Octo",
+    event = { { event = "BufReadCmd", pattern = "octo://*" } },
+    dependencies = {
+      "nvim-lua/plenary.nvim",
+      "nvim-telescope/telescope.nvim",
+    },
+    keys = {
+      { "<leader>gO", "<cmd>Octo pr list<cr>", desc = "🐙 GitHub PR: список/ревью" },
+    },
+    opts = {
+      enable_builtin = true,
+      default_merge_method = "squash",
+      picker = "telescope",
     },
   },
 }
