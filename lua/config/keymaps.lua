@@ -145,7 +145,10 @@ local function open_help()
   if vim.fn.filereadable(path) == 1 then
     vim.cmd("edit " .. path)
   else
-    vim.notify("Шпаргалка не найдена. Нажмите Space затем подождите which-key.", vim.log.levels.WARN)
+    vim.notify(
+      "Шпаргалка не найдена. Нажмите Space затем подождите which-key.",
+      vim.log.levels.WARN
+    )
   end
 end
 
