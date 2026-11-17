@@ -68,7 +68,8 @@ map("v", "<S-Up>", ":m '<-2<cr>gv=gv", { desc = "Переместить стро
 map("i", "jk", "<Esc>", { desc = "Выйти из режима вставки" })
 
 -- ── Внешний терминал (новое окно iTerm в директории проекта) ─────────────────
-map("n", "<leader>tT", function()
+-- Висит в группе «📟 Терминал» (<leader>T), а не в тестах (<leader>t).
+map("n", "<leader>TT", function()
   local cwd = vim.fn.getcwd()
   local iterm = vim.fn.expand("~/Applications/iTerm.app")
   if vim.fn.isdirectory(iterm) == 1 then
@@ -78,6 +79,17 @@ map("n", "<leader>tT", function()
   end
   vim.notify("🖥️  Внешний терминал: " .. cwd, vim.log.levels.INFO)
 end, { desc = "Новое окно терминала в директории проекта" })
+
+-- ── Explorer (Snacks) ─────────────────────────────────────────────────────────
+-- Маппинг живёт здесь, а не в lua/plugins/, потому что файл грузится на
+-- VeryLazy — уже после того, как lazy раздаст ключи экстрам LazyVim.
+-- В спеке плагина он перетирался: LazyVim добавляет extras позже.
+-- LazyVim по умолчанию открывает Explorer в cwd (vim.uv.cwd()), из-за чего
+-- он уезжал выше проекта. Здесь явно корень проекта.
+-- Маркеры корня — vim.g.root_spec в lua/config/options.lua.
+map("n", "<leader>E", function()
+  Snacks.explorer({ cwd = LazyVim.root() })
+end, { desc = "📂 Explorer (корень проекта)" })
 
 -- ── Поиск ─────────────────────────────────────────────────────────────────────
 map("n", "<Esc>", "<cmd>nohlsearch<cr>", { desc = "Убрать подсветку поиска" })

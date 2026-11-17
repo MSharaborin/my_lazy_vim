@@ -62,10 +62,27 @@ return {
       local Terminal = require("toggleterm.terminal").Terminal
 
       local function get_python()
-        local venv = vim.fn.getcwd() .. "/.venv/bin/python"
-        if vim.fn.executable(venv) == 1 then
-          return venv
+        -- Порядок тот же, что в python.lua: активный VIRTUAL_ENV, затем
+        -- .venv / venv / env в корне проекта и в cwd, затем conda.
+        local candidates = {}
+
+        local active = vim.env.VIRTUAL_ENV
+        if active and active ~= "" then
+          table.insert(candidates, active .. "/bin/python")
         end
+
+        for _, root in ipairs({ LazyVim.root(), vim.fn.getcwd() }) do
+          table.insert(candidates, root .. "/.venv/bin/python")
+          table.insert(candidates, root .. "/venv/bin/python")
+          table.insert(candidates, root .. "/env/bin/python")
+        end
+
+        for _, path in ipairs(candidates) do
+          if vim.fn.executable(path) == 1 then
+            return path
+          end
+        end
+
         local conda = vim.fn.getenv("CONDA_PREFIX")
         if conda and conda ~= vim.NIL and conda ~= "" then
           local conda_python = conda .. "/bin/python"

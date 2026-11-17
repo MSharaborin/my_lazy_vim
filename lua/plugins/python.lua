@@ -2,11 +2,28 @@
 -- Extras lang.python / dap.core / test.core — в lazyvim.json
 -- <leader>d*  отладка | <leader>t* тесты | <leader>r* REPL | <leader>pr запуск
 
+-- Порядок поиска интерпретатора. Проверяем корень проекта и cwd, потому что
+-- venv-ы в проектах называются и .venv, и venv, а uv и conda кладут их по-своему.
 local function resolve_python()
-  local venv = vim.fn.getcwd() .. "/.venv/bin/python"
-  if vim.fn.executable(venv) == 1 then
-    return venv
+  local candidates = {}
+
+  local active = vim.env.VIRTUAL_ENV
+  if active and active ~= "" then
+    table.insert(candidates, active .. "/bin/python")
   end
+
+  for _, root in ipairs({ LazyVim.root(), vim.fn.getcwd() }) do
+    table.insert(candidates, root .. "/.venv/bin/python")
+    table.insert(candidates, root .. "/venv/bin/python")
+    table.insert(candidates, root .. "/env/bin/python")
+  end
+
+  for _, path in ipairs(candidates) do
+    if vim.fn.executable(path) == 1 then
+      return path
+    end
+  end
+
   local conda = vim.fn.getenv("CONDA_PREFIX")
   if conda and conda ~= vim.NIL and conda ~= "" then
     local conda_python = conda .. "/bin/python"
@@ -19,6 +36,18 @@ local function resolve_python()
 end
 
 return {
+  -- ── Venv-selector: выбор окружения из любого буфера ─────────────────────────
+  -- LazyVim вешает <leader>cv только на ft=python, поэтому в других файлах
+  -- хоткей не срабатывал. Дублируем маппинг без ft.
+  -- Про uv: плагин умеет PEP-723 скрипты (# /// script → uv sync --script);
+  -- в обычном uv-проекте (uv.lock + .venv) venv находится как .venv/bin/python.
+  {
+    "linux-cultist/venv-selector.nvim",
+    keys = {
+      { "<leader>cv", "<cmd>VenvSelect<cr>", desc = "🐍 Выбрать Python venv" },
+    },
+  },
+
   -- ── Ruff: автофикс и импорты ────────────────────────────────────────────────
   {
     "neovim/nvim-lspconfig",
@@ -260,7 +289,41 @@ return {
           dap = { justMyCode = false },
           runner = "pytest",
           python = resolve_python,
+          -- -s: не перехватывать stdout — print() в тестах и коде видны
+          -- сразу в выводе теста (Space to), без секции "Captured stdout"
+          args = { "-s" },
         },
+      },
+      -- После КАЖДОГО завершения запуска теста открывать окно вывода —
+      -- как Test Runner в PyCharm. Дефолтный open_on_run показывает вывод
+      -- только для упавших тестов. Окно открывается без перехвата фокуса.
+      consumers = {
+        auto_output = function(client)
+          local pending = {} -- id позиций текущего запуска -> true
+          client.listeners.run = function(_, root_id)
+            pending[root_id] = true
+          end
+          client.listeners.results = function(_, results, partial)
+            -- partial = потоковые обновления по ходу теста, ждём финал
+            if partial then
+              return
+            end
+            for id in pairs(results) do
+              if pending[id] then
+                vim.schedule(function()
+                  require("neotest").output.open({
+                    position_id = id,
+                    enter = false, -- фокус остаётся в коде
+                    short = false, -- полный вывод, вместе с print()
+                    auto_close = true,
+                    quiet = true,
+                  })
+                end)
+                break
+              end
+            end
+          end
+        end,
       },
     },
   },
