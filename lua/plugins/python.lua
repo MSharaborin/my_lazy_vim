@@ -269,9 +269,13 @@ return {
       {
         "<leader>to",
         function()
-          require("neotest").output.open({ enter = true, auto_close = true })
+          -- Панель снизу (split), а не плавающее окно: копирование мышью
+          -- из сплита безопасно — клик в другое окно завершает visual mode.
+          -- Плавающий вывод (output.open) при копировании "утечкой" включал
+          -- visual mode в редакторе и ломал leader (Space).
+          require("neotest").output_panel.open()
         end,
-        desc = "📄 Вывод теста",
+        desc = "📄 Вывод теста (панель снизу)",
       },
       { "<leader>tO", function() require("neotest").output_panel.toggle() end, desc = "📄 Панель вывода" },
       {
@@ -294,9 +298,10 @@ return {
           args = { "-s" },
         },
       },
-      -- После КАЖДОГО завершения запуска теста открывать окно вывода —
-      -- как Test Runner в PyCharm. Дефолтный open_on_run показывает вывод
-      -- только для упавших тестов. Окно открывается без перехвата фокуса.
+      -- После КАЖДОГО завершения запуска теста открывать панель вывода снизу —
+      -- как Test Runner в PyCharm. Раньше открывалось плавающее окно (float):
+      -- копирование из него мышью оставляло visual mode «висеть» в редакторе
+      -- и ломало leader (Space). Панель — обычный сплит, такой проблемы нет.
       consumers = {
         auto_output = function(client)
           local pending = {} -- id позиций текущего запуска -> true
@@ -311,13 +316,7 @@ return {
             for id in pairs(results) do
               if pending[id] then
                 vim.schedule(function()
-                  require("neotest").output.open({
-                    position_id = id,
-                    enter = false, -- фокус остаётся в коде
-                    short = false, -- полный вывод, вместе с print()
-                    auto_close = true,
-                    quiet = true,
-                  })
+                  require("neotest").output_panel.open()
                 end)
                 break
               end
